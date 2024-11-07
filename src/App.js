@@ -24,42 +24,31 @@ ChartJS.register(
 
 function App() {
   const [annual, setAnnual] = useState('');
-  const [monthly, setMonthly] = useState('');
   const [monthlyExpenses, setMonthlyExpenses] = useState('');
   const [currentSavings, setCurrentSavings] = useState('');
-  const [targetAmount, setTargetAmount] = useState('1000000'); // Default $1M
-  const [yearsToProject, setYearsToProject] = useState('10'); // Default 10 years
+  const [currentAge, setCurrentAge] = useState('');
+  const [targetAge, setTargetAge] = useState('60');
+  const [targetAmount, setTargetAmount] = useState('1000000');
+  const [annualReturn, setAnnualReturn] = useState(7);
   const [projections, setProjections] = useState(null);
   const [chartData, setChartData] = useState(null);
 
-  const ANNUAL_RETURN = 0.07; // 7% annual return
-
-  const updateAnnual = (value) => {
-    const numValue = parseFloat(value.replace(/[^0-9.]/g, '')) || 0;
-    setAnnual(numValue);
-    setMonthly((numValue / 12).toFixed(2));
-  };
-
-  const updateMonthly = (value) => {
-    const numValue = parseFloat(value.replace(/[^0-9.]/g, '')) || 0;
-    setMonthly(numValue);
-    setAnnual((numValue * 12).toFixed(2));
-  };
-
   useEffect(() => {
-    if (annual && monthlyExpenses) {
+    if (annual && monthlyExpenses && currentAge) {
       const yearlySavings = annual - (monthlyExpenses * 12);
       const initialAmount = parseFloat(currentSavings) || 0;
       const targetAmountNum = parseFloat(targetAmount) || 0;
+      const returnRate = annualReturn / 100;
+      const yearsToProject = targetAge - currentAge;
       
-      // Generate data points for each year
-      const labels = Array.from({ length: parseInt(yearsToProject) + 1 }, (_, i) => i);
-      const dataPoints = labels.map(year => 
-        calculateFutureValue(yearlySavings, ANNUAL_RETURN, year, initialAmount)
+      // Generate data points for each year with age labels
+      const labels = Array.from(
+        { length: yearsToProject + 1 }, 
+        (_, i) => parseInt(currentAge) + i
       );
-
-      // Create target line data
-      const targetLineData = labels.map(() => targetAmountNum);
+      const dataPoints = labels.map((_, index) => 
+        calculateFutureValue(yearlySavings, returnRate, index, initialAmount)
+      );
 
       setChartData({
         labels,
@@ -67,14 +56,14 @@ function App() {
           {
             label: 'Portfolio Value',
             data: dataPoints,
-            borderColor: 'rgb(59, 130, 246)', // Tailwind blue-500
+            borderColor: 'rgb(59, 130, 246)',
             backgroundColor: 'rgba(59, 130, 246, 0.1)',
             fill: true,
           },
           {
             label: 'Target Amount',
-            data: targetLineData,
-            borderColor: 'rgba(239, 68, 68, 0.5)', // Tailwind red-500
+            data: labels.map(() => targetAmountNum),
+            borderColor: 'rgba(239, 68, 68, 0.5)',
             borderDash: [5, 5],
             pointRadius: 0,
             fill: false,
@@ -82,20 +71,18 @@ function App() {
         ]
       });
 
-      // Calculate future value including current savings
-      const futureValue = calculateFutureValue(yearlySavings, ANNUAL_RETURN, yearsToProject, initialAmount);
-      
-      // Calculate years needed to reach target
-      const yearsToTarget = calculateYearsToTarget(yearlySavings, ANNUAL_RETURN, targetAmount, initialAmount);
+      const yearsToTarget = calculateYearsToTarget(yearlySavings, returnRate, targetAmount, initialAmount);
+      const targetAgeReached = parseInt(currentAge) + yearsToTarget;
 
       setProjections({
         yearlySavings,
-        futureValue,
+        futureValue: dataPoints[dataPoints.length - 1],
         yearsToTarget,
-        targetDate: new Date(Date.now() + yearsToTarget * 365 * 24 * 60 * 60 * 1000)
+        targetAge: targetAgeReached,
+        finalAge: parseInt(targetAge)
       });
     }
-  }, [annual, monthlyExpenses, targetAmount, yearsToProject, currentSavings]);
+  }, [annual, monthlyExpenses, currentAge, targetAge, targetAmount, currentSavings, annualReturn]);
 
   // Calculate future value with compound interest
   const calculateFutureValue = (yearlySavings, rate, years, initial) => {
@@ -166,7 +153,7 @@ function App() {
         </h1>
         
         <div className="space-y-4">
-          {/* Initial Income and Expenses Section */}
+          {/* Initial inputs section */}
           <div className="space-y-4 mb-6">
             <div className="relative">
               <label className="block text-gray-700 mb-2">Annual Income</label>
@@ -174,22 +161,9 @@ function App() {
               <input
                 type="number"
                 value={annual}
-                onChange={(e) => updateAnnual(e.target.value)}
+                onChange={(e) => setAnnual(parseFloat(e.target.value) || 0)}
                 className="w-full pl-8 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter annual income"
-                min="0"
-              />
-            </div>
-
-            <div className="relative">
-              <label className="block text-gray-700 mb-2">Monthly Income</label>
-              <span className="absolute left-3 top-[calc(50%+0.5rem)] transform -translate-y-1/2 text-gray-500">$</span>
-              <input
-                type="number"
-                value={monthly}
-                onChange={(e) => updateMonthly(e.target.value)}
-                className="w-full pl-8 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter monthly income"
                 min="0"
               />
             </div>
@@ -206,11 +180,37 @@ function App() {
                 min="0"
               />
             </div>
+
+            <div className="relative">
+              <label className="block text-gray-700 mb-2">Current Age</label>
+              <input
+                type="number"
+                value={currentAge}
+                onChange={(e) => setCurrentAge(parseFloat(e.target.value) || '')}
+                className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter your current age"
+                min="0"
+                max="100"
+              />
+            </div>
           </div>
 
-          {/* Show advanced options only after initial inputs are filled */}
-          {annual && monthlyExpenses && (
+          {annual && monthlyExpenses && currentAge && (
             <div className="space-y-4">
+              <div className="relative">
+                <label className="block text-gray-700 mb-2">Annual Return Rate (%)</label>
+                <input
+                  type="number"
+                  value={annualReturn}
+                  onChange={(e) => setAnnualReturn(parseFloat(e.target.value) || 0)}
+                  className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter expected return rate"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                />
+              </div>
+
               <div className="relative">
                 <label className="block text-gray-700 mb-2">Current Savings</label>
                 <span className="absolute left-3 top-[calc(50%+0.5rem)] transform -translate-y-1/2 text-gray-500">$</span>
@@ -224,19 +224,20 @@ function App() {
                 />
               </div>
 
-              <p className="text-gray-700 font-semibold">Based on {ANNUAL_RETURN * 100}% annual return:</p>
+              <p className="text-gray-700 font-semibold">Based on {annualReturn}% annual return:</p>
               <p className="text-gray-700">Yearly Savings: ${projections?.yearlySavings.toLocaleString()}</p>
               
               <div className="flex items-center space-x-4">
                 <div className="flex-1">
-                  <label className="block text-gray-700 mb-2">Years to Project</label>
+                  <label className="block text-gray-700 mb-2">Target Age</label>
                   <input
                     type="number"
-                    value={yearsToProject}
-                    onChange={(e) => setYearsToProject(parseFloat(e.target.value) || 0)}
+                    value={targetAge}
+                    onChange={(e) => setTargetAge(parseFloat(e.target.value) || 60)}
                     className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Years"
-                    min="0"
+                    placeholder="Target retirement age"
+                    min={currentAge}
+                    max="100"
                   />
                 </div>
                 <div className="flex-1 pt-8">
@@ -246,29 +247,12 @@ function App() {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-4">
-                <div className="flex-1">
-                  <label className="block text-gray-700 mb-2">Target Amount</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-                    <input
-                      type="number"
-                      value={targetAmount}
-                      onChange={(e) => setTargetAmount(parseFloat(e.target.value) || 0)}
-                      className="w-full pl-8 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Target $"
-                      min="0"
-                    />
-                  </div>
-                </div>
-                <div className="flex-1 pt-8">
-                  <p className="text-gray-700 font-semibold">
-                    {projections?.yearsToTarget.toFixed(1)} years
-                  </p>
-                </div>
-              </div>
+              {projections?.targetAge < projections?.finalAge && (
+                <p className="text-green-600">
+                  You'll reach your target at age {projections.targetAge.toFixed(1)}!
+                </p>
+              )}
 
-              {/* Add chart before the FI Calculator link */}
               {chartData && (
                 <div className="mt-6 p-4 bg-gray-50 rounded-md">
                   <h3 className="text-gray-700 font-semibold mb-4">Growth Projection</h3>
