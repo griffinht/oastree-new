@@ -26,10 +26,11 @@ function App() {
   const [annual, setAnnual] = useState('');
   const [monthlyExpenses, setMonthlyExpenses] = useState('');
   const [currentSavings, setCurrentSavings] = useState('');
-  const [currentAge, setCurrentAge] = useState('');
+  const [currentAge, setCurrentAge] = useState('0');
   const [targetAge, setTargetAge] = useState('60');
   const [targetAmount, setTargetAmount] = useState('1000000');
   const [annualReturn, setAnnualReturn] = useState(7);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [projections, setProjections] = useState(null);
   const [chartData, setChartData] = useState(null);
 
@@ -152,98 +153,108 @@ function App() {
           Quick FI Calculator
         </h1>
         
-        <div className="space-y-4">
-          {/* Initial inputs section */}
-          <div className="space-y-4 mb-6">
-            <div className="relative">
-              <label className="block text-gray-700 mb-2">Annual Income</label>
-              <span className="absolute left-3 top-[calc(50%+0.5rem)] transform -translate-y-1/2 text-gray-500">$</span>
-              <input
-                type="number"
-                value={annual}
-                onChange={(e) => setAnnual(parseFloat(e.target.value) || 0)}
-                className="w-full pl-8 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter annual income"
-                min="0"
-              />
-            </div>
-
-            <div className="relative">
-              <label className="block text-gray-700 mb-2">Monthly Expenses</label>
-              <span className="absolute left-3 top-[calc(50%+0.5rem)] transform -translate-y-1/2 text-gray-500">$</span>
-              <input
-                type="number"
-                value={monthlyExpenses}
-                onChange={(e) => setMonthlyExpenses(parseFloat(e.target.value) || 0)}
-                className="w-full pl-8 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter monthly expenses"
-                min="0"
-              />
-            </div>
-
-            <div className="relative">
-              <label className="block text-gray-700 mb-2">Current Age</label>
-              <input
-                type="number"
-                value={currentAge}
-                onChange={(e) => setCurrentAge(parseFloat(e.target.value) || '')}
-                className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter your current age"
-                min="0"
-                max="100"
-              />
-            </div>
+        {/* Core Financial Inputs */}
+        <div className="space-y-4 mb-6">
+          <div className="relative">
+            <label className="block text-gray-700 mb-2">Annual Income</label>
+            <span className="absolute left-3 top-[calc(50%+0.5rem)] transform -translate-y-1/2 text-gray-500">$</span>
+            <input
+              type="number"
+              value={annual}
+              onChange={(e) => setAnnual(parseFloat(e.target.value) || 0)}
+              className="w-full pl-8 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter annual income"
+              min="0"
+            />
           </div>
 
-          {annual && monthlyExpenses && currentAge && (
-            <div className="space-y-4">
-              <div className="relative">
-                <label className="block text-gray-700 mb-2">Annual Return Rate (%)</label>
-                <input
-                  type="number"
-                  value={annualReturn}
-                  onChange={(e) => setAnnualReturn(parseFloat(e.target.value) || 0)}
-                  className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter expected return rate"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                />
-              </div>
+          <div className="relative">
+            <label className="block text-gray-700 mb-2">Monthly Expenses</label>
+            <span className="absolute left-3 top-[calc(50%+0.5rem)] transform -translate-y-1/2 text-gray-500">$</span>
+            <input
+              type="number"
+              value={monthlyExpenses}
+              onChange={(e) => setMonthlyExpenses(parseFloat(e.target.value) || 0)}
+              className="w-full pl-8 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter monthly expenses"
+              min="0"
+            />
+          </div>
 
-              <div className="relative">
-                <label className="block text-gray-700 mb-2">Current Savings</label>
-                <span className="absolute left-3 top-[calc(50%+0.5rem)] transform -translate-y-1/2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  value={currentSavings}
-                  onChange={(e) => setCurrentSavings(parseFloat(e.target.value) || 0)}
-                  className="w-full pl-8 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter current savings"
-                  min="0"
-                />
-              </div>
+          {annual && monthlyExpenses && (
+            <p className="text-gray-700">Yearly Savings: ${projections?.yearlySavings.toLocaleString()}</p>
+          )}
+        </div>
 
-              <p className="text-gray-700 font-semibold">Based on {annualReturn}% annual return:</p>
-              <p className="text-gray-700">Yearly Savings: ${projections?.yearlySavings.toLocaleString()}</p>
-              
-              <div className="flex items-center space-x-4">
-                <div className="flex-1">
+        {annual && monthlyExpenses && (
+          <>
+            {/* Investment Settings */}
+            <div className="space-y-4 mb-6 p-4 bg-gray-50 rounded-md">
+              <h3 className="font-semibold text-gray-700">Investment Settings</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="relative">
+                  <label className="block text-gray-700 mb-2">Return Rate (%)</label>
+                  <input
+                    type="number"
+                    value={annualReturn}
+                    onChange={(e) => setAnnualReturn(parseFloat(e.target.value) || 0)}
+                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Annual return"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                  />
+                </div>
+                <div className="relative">
+                  <label className="block text-gray-700 mb-2">Current Savings</label>
+                  <span className="absolute left-3 top-[calc(50%+0.5rem)] transform -translate-y-1/2 text-gray-500">$</span>
+                  <input
+                    type="number"
+                    value={currentSavings}
+                    onChange={(e) => setCurrentSavings(parseFloat(e.target.value) || 0)}
+                    className="w-full pl-8 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Starting amount"
+                    min="0"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Growth Chart */}
+            {chartData && (
+              <div className="mb-6 p-4 bg-gray-50 rounded-md">
+                <h3 className="text-gray-700 font-semibold mb-4">Growth Projection</h3>
+                <Line data={chartData} options={chartOptions} />
+              </div>
+            )}
+
+            {/* Timeline Settings */}
+            <div className="space-y-4 p-4 bg-gray-50 rounded-md">
+              <h3 className="font-semibold text-gray-700">Timeline</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-700 mb-2">Current Age</label>
+                  <input
+                    type="number"
+                    value={currentAge}
+                    onChange={(e) => setCurrentAge(parseFloat(e.target.value) || 0)}
+                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Your age"
+                    min="0"
+                    max="100"
+                  />
+                </div>
+                <div>
                   <label className="block text-gray-700 mb-2">Target Age</label>
                   <input
                     type="number"
                     value={targetAge}
                     onChange={(e) => setTargetAge(parseFloat(e.target.value) || 60)}
                     className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Target retirement age"
+                    placeholder="Retirement age"
                     min={currentAge}
                     max="100"
                   />
-                </div>
-                <div className="flex-1 pt-8">
-                  <p className="text-gray-700 font-semibold">
-                    ${projections?.futureValue.toLocaleString(undefined, {maximumFractionDigits: 0})}
-                  </p>
                 </div>
               </div>
 
@@ -252,30 +263,23 @@ function App() {
                   You'll reach your target at age {projections.targetAge.toFixed(1)}!
                 </p>
               )}
-
-              {chartData && (
-                <div className="mt-6 p-4 bg-gray-50 rounded-md">
-                  <h3 className="text-gray-700 font-semibold mb-4">Growth Projection</h3>
-                  <Line data={chartData} options={chartOptions} />
-                </div>
-              )}
-
-              <div className="mt-4 pt-4 border-t">
-                <p className="text-sm text-gray-600">
-                  Need help figuring out your target amount? Visit{' '}
-                  <a 
-                    href="https://ficalc.app" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-blue-500 hover:text-blue-600"
-                  >
-                    FI Calculator
-                  </a>
-                </p>
-              </div>
             </div>
-          )}
-        </div>
+
+            <div className="mt-4 pt-4 border-t">
+              <p className="text-sm text-gray-600">
+                Need help figuring out your target amount? Visit{' '}
+                <a 
+                  href="https://ficalc.app" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:text-blue-600"
+                >
+                  FI Calculator
+                </a>
+              </p>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
