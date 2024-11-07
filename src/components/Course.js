@@ -149,6 +149,16 @@ function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
     }));
   };
 
+  const getNextAssignmentName = (categoryName, category) => {
+    const existingNumbers = category.assignments?.map(a => {
+      const match = a.name.match(/\d+$/);
+      return match ? parseInt(match[0]) : 0;
+    }) || [];
+    
+    const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+    return `${categoryName} ${nextNumber}`;
+  };
+
   return (
     <div className={`space-y-4 p-4 border rounded-lg ${!course.included ? 'opacity-50' : ''}`}>
       <div className="flex justify-between items-start">
@@ -414,13 +424,38 @@ function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
               <div className="flex items-center gap-4 p-2 bg-gray-100/50 rounded-lg border-2 border-dashed border-gray-300 hover:bg-gray-100">
                 <input
                   className="w-[100px] px-2 py-1 rounded-md border border-gray-300 text-sm"
-                  placeholder={`${catName} ${(category.assignments?.length || 0) + 1}`}
-                  value={newAssignmentName}
+                  placeholder={getNextAssignmentName(catName, category)}
+                  value={newAssignmentName || getNextAssignmentName(catName, category)}
                   onChange={(e) => setNewAssignmentName(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && newAssignmentName.trim()) {
+                    if (e.key === 'Enter') {
                       e.preventDefault();
-                      handleAddAssignment(catName);
+                      const newCategories = { ...course.categories };
+                      const category = newCategories[catName];
+                      
+                      category.assignments = [...(category.assignments || []), {
+                        name: newAssignmentName || getNextAssignmentName(catName, category),
+                        earned: newAssignmentEarned || '',
+                        total: newAssignmentTotal || '100'
+                      }];
+
+                      // Update the category's earned/total
+                      const totalEarned = category.assignments.reduce((sum, a) => sum + (parseFloat(a.earned) || 0), 0);
+                      const totalPossible = category.assignments.reduce((sum, a) => sum + (parseFloat(a.total) || 0), 0);
+                      category.earned = totalEarned;
+                      category.total = totalPossible;
+
+                      handleCourseChange(index, {
+                        target: {
+                          name: 'categories',
+                          value: newCategories
+                        }
+                      });
+
+                      // Clear the inputs
+                      setNewAssignmentName('');
+                      setNewAssignmentEarned('');
+                      setNewAssignmentTotal('100');
                     }
                   }}
                 />
@@ -447,34 +482,32 @@ function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
                 <button
                   type="button"
                   onClick={() => {
-                    if (newAssignmentName.trim()) {
-                      const newCategories = { ...course.categories };
-                      const category = newCategories[catName];
-                      
-                      category.assignments = [...(category.assignments || []), {
-                        name: newAssignmentName,
-                        earned: newAssignmentEarned || '',
-                        total: newAssignmentTotal || '100'
-                      }];
+                    const newCategories = { ...course.categories };
+                    const category = newCategories[catName];
+                    
+                    category.assignments = [...(category.assignments || []), {
+                      name: newAssignmentName || getNextAssignmentName(catName, category),
+                      earned: newAssignmentEarned || '',
+                      total: newAssignmentTotal || '100'
+                    }];
 
-                      // Update the category's earned/total
-                      const totalEarned = category.assignments.reduce((sum, a) => sum + (parseFloat(a.earned) || 0), 0);
-                      const totalPossible = category.assignments.reduce((sum, a) => sum + (parseFloat(a.total) || 0), 0);
-                      category.earned = totalEarned;
-                      category.total = totalPossible;
+                    // Update the category's earned/total
+                    const totalEarned = category.assignments.reduce((sum, a) => sum + (parseFloat(a.earned) || 0), 0);
+                    const totalPossible = category.assignments.reduce((sum, a) => sum + (parseFloat(a.total) || 0), 0);
+                    category.earned = totalEarned;
+                    category.total = totalPossible;
 
-                      handleCourseChange(index, {
-                        target: {
-                          name: 'categories',
-                          value: newCategories
-                        }
-                      });
+                    handleCourseChange(index, {
+                      target: {
+                        name: 'categories',
+                        value: newCategories
+                      }
+                    });
 
-                      // Clear the inputs
-                      setNewAssignmentName('');
-                      setNewAssignmentEarned('');
-                      setNewAssignmentTotal('100');
-                    }
+                    // Clear the inputs
+                    setNewAssignmentName('');
+                    setNewAssignmentEarned('');
+                    setNewAssignmentTotal('100');
                   }}
                   className="text-green-500 hover:text-green-600"
                   tabIndex="-1"
