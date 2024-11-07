@@ -35,7 +35,8 @@ function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
           [newCategoryName.toLowerCase()]: {
             weight,
             earned: '',
-            total: 100
+            total: 100,
+            assignments: []
           }
         }
       }
@@ -43,6 +44,52 @@ function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
     
     setNewCategoryName('');
     setNewCategoryWeight('');
+  };
+
+  const handleAddAssignment = (categoryName) => {
+    const newCategories = { ...course.categories };
+    const category = newCategories[categoryName];
+    
+    category.assignments = [...(category.assignments || []), {
+      name: `${categoryName} ${(category.assignments?.length || 0) + 1}`,
+      earned: '',
+      total: 100
+    }];
+
+    // Update the category's earned/total based on assignments
+    if (category.assignments.length > 0) {
+      const totalEarned = category.assignments.reduce((sum, a) => sum + (parseFloat(a.earned) || 0), 0);
+      const totalPossible = category.assignments.reduce((sum, a) => sum + (parseFloat(a.total) || 0), 0);
+      category.earned = totalEarned;
+      category.total = totalPossible;
+    }
+
+    handleCourseChange(index, {
+      target: {
+        name: 'categories',
+        value: newCategories
+      }
+    });
+  };
+
+  const handleAssignmentChange = (categoryName, assignmentIndex, field, value) => {
+    const newCategories = { ...course.categories };
+    const category = newCategories[categoryName];
+    
+    category.assignments[assignmentIndex][field] = value;
+
+    // Update the category's earned/total
+    const totalEarned = category.assignments.reduce((sum, a) => sum + (parseFloat(a.earned) || 0), 0);
+    const totalPossible = category.assignments.reduce((sum, a) => sum + (parseFloat(a.total) || 0), 0);
+    category.earned = totalEarned;
+    category.total = totalPossible;
+
+    handleCourseChange(index, {
+      target: {
+        name: 'categories',
+        value: newCategories
+      }
+    });
   };
 
   const calculateCurrentGrade = () => {
@@ -198,79 +245,148 @@ function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
       <div className={`space-y-2 transition-all duration-200 ${isCollapsed ? 'hidden' : ''}`}>
         {/* Existing Categories */}
         {Object.entries(course.categories).map(([catName, category]) => (
-          <div key={catName} className="flex items-center justify-between gap-4 p-2 bg-gray-50 rounded-lg">
-            <div className="flex items-center gap-2">
-              <input
-                className="w-[100px] px-2 py-1 rounded-md border border-gray-300 text-sm font-medium focus:outline-none"
-                value={catName}
-                onChange={(e) => {
-                  const newCategories = { ...course.categories };
-                  const categoryData = newCategories[catName];
-                  delete newCategories[catName];
-                  newCategories[e.target.value.toLowerCase()] = categoryData;
-                  handleCourseChange(index, {
-                    target: {
-                      name: 'categories',
-                      value: newCategories
-                    }
-                  });
-                }}
-                tabIndex="-1"
-                onClick={(e) => e.target.select()}
-              />
+          <div key={catName} className="space-y-2">
+            <div className="flex items-center justify-between gap-4 p-2 bg-gray-50 rounded-lg">
               <div className="flex items-center gap-2">
                 <input
-                  className="w-20 px-2 py-1 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  type="number"
-                  placeholder="Earned"
-                  name="earned"
-                  value={category.earned}
-                  onChange={(e) => handleCourseChange(index, e, catName)}
-                  min="0"
-                  max={category.total}
+                  className="w-[100px] px-2 py-1 rounded-md border border-gray-300 text-sm font-medium focus:outline-none"
+                  value={catName}
+                  onChange={(e) => {
+                    const newCategories = { ...course.categories };
+                    const categoryData = newCategories[catName];
+                    delete newCategories[catName];
+                    newCategories[e.target.value.toLowerCase()] = categoryData;
+                    handleCourseChange(index, {
+                      target: {
+                        name: 'categories',
+                        value: newCategories
+                      }
+                    });
+                  }}
+                  tabIndex="-1"
+                  onClick={(e) => e.target.select()}
                 />
-                <span className="text-gray-500">/</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    className="w-20 px-2 py-1 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    type="number"
+                    placeholder="Earned"
+                    name="earned"
+                    value={category.earned}
+                    onChange={(e) => handleCourseChange(index, e, catName)}
+                    min="0"
+                    max={category.total}
+                  />
+                  <span className="text-gray-500">/</span>
+                  <input
+                    className="w-20 px-2 py-1 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    type="number"
+                    placeholder="Total"
+                    name="total"
+                    value={category.total}
+                    onChange={(e) => handleCourseChange(index, e, catName)}
+                    min="0"
+                    tabIndex="-1"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Weight:</span>
                 <input
-                  className="w-20 px-2 py-1 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-16 px-2 py-1 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   type="number"
-                  placeholder="Total"
-                  name="total"
-                  value={category.total}
+                  name="weight"
+                  value={category.weight}
                   onChange={(e) => handleCourseChange(index, e, catName)}
                   min="0"
+                  max="100"
                   tabIndex="-1"
                 />
+                <span className="text-sm text-gray-500">%</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newCategories = { ...course.categories };
+                    delete newCategories[catName];
+                    handleCourseChange(index, {
+                      target: {
+                        name: 'categories',
+                        value: newCategories
+                      }
+                    });
+                  }}
+                  className="p-1 text-red-500 hover:text-red-600"
+                  tabIndex="-1"
+                >
+                  <Trash className="h-4 w-4" />
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Weight:</span>
-              <input
-                className="w-16 px-2 py-1 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                type="number"
-                name="weight"
-                value={category.weight}
-                onChange={(e) => handleCourseChange(index, e, catName)}
-                min="0"
-                max="100"
-                tabIndex="-1"
-              />
-              <span className="text-sm text-gray-500">%</span>
+
+            {/* Assignments section */}
+            <div className="ml-8 space-y-2">
+              {category.assignments?.map((assignment, assignmentIndex) => (
+                <div key={assignmentIndex} className="flex items-center gap-4 p-2 bg-gray-100/50 rounded-lg">
+                  <input
+                    className="w-[100px] px-2 py-1 rounded-md border border-gray-300 text-sm"
+                    value={assignment.name}
+                    onChange={(e) => handleAssignmentChange(catName, assignmentIndex, 'name', e.target.value)}
+                    placeholder={`${catName} ${assignmentIndex + 1}`}
+                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      className="w-16 px-2 py-1 rounded-md border border-gray-300 text-sm"
+                      type="number"
+                      value={assignment.earned}
+                      onChange={(e) => handleAssignmentChange(catName, assignmentIndex, 'earned', e.target.value)}
+                      min="0"
+                      max={assignment.total}
+                    />
+                    <span className="text-gray-500">/</span>
+                    <input
+                      className="w-16 px-2 py-1 rounded-md border border-gray-300 text-sm"
+                      type="number"
+                      value={assignment.total}
+                      onChange={(e) => handleAssignmentChange(catName, assignmentIndex, 'total', e.target.value)}
+                      min="0"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newCategories = { ...course.categories };
+                      newCategories[catName].assignments = category.assignments.filter((_, i) => i !== assignmentIndex);
+                      
+                      // Update category totals
+                      const remaining = newCategories[catName].assignments;
+                      const totalEarned = remaining.reduce((sum, a) => sum + (parseFloat(a.earned) || 0), 0);
+                      const totalPossible = remaining.reduce((sum, a) => sum + (parseFloat(a.total) || 0), 0);
+                      newCategories[catName].earned = totalEarned;
+                      newCategories[catName].total = totalPossible;
+
+                      handleCourseChange(index, {
+                        target: {
+                          name: 'categories',
+                          value: newCategories
+                        }
+                      });
+                    }}
+                    className="text-red-500 hover:text-red-600"
+                    tabIndex="-1"
+                  >
+                    <Trash className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              
+              {/* Add assignment button */}
               <button
                 type="button"
-                onClick={() => {
-                  const newCategories = { ...course.categories };
-                  delete newCategories[catName];
-                  handleCourseChange(index, {
-                    target: {
-                      name: 'categories',
-                      value: newCategories
-                    }
-                  });
-                }}
-                className="p-1 text-red-500 hover:text-red-600"
-                tabIndex="-1"
+                onClick={() => handleAddAssignment(catName)}
+                className="text-sm text-blue-500 hover:text-blue-600 flex items-center gap-1"
               >
-                <Trash className="h-4 w-4" />
+                <Plus className="h-3 w-3" />
+                Add Assignment
               </button>
             </div>
           </div>
