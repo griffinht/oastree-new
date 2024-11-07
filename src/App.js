@@ -3,14 +3,31 @@ import { Plus } from "lucide-react";
 import Course from './components/Course';
 
 function App() {
-  const [courses, setCourses] = useState([{
-    name: '',
-    credits: '3',
-    target: '',
-    categories: {}
-  }]);
+  const [courses, setCourses] = useState(() => {
+    const saved = localStorage.getItem('courses');
+    return saved ? JSON.parse(saved) : [{
+      name: '',
+      credits: '3',
+      target: '',
+      categories: {},
+      included: true
+    }];
+  });
+
+  const [previousGpa, setPreviousGpa] = useState(() => {
+    const saved = localStorage.getItem('previousGpa');
+    return saved ? JSON.parse(saved) : { gpa: '', credits: '' };
+  });
+
   const [gpa, setGpa] = useState(null);
-  const [previousGpa, setPreviousGpa] = useState({ gpa: '', credits: '' });
+
+  useEffect(() => {
+    localStorage.setItem('courses', JSON.stringify(courses));
+  }, [courses]);
+
+  useEffect(() => {
+    localStorage.setItem('previousGpa', JSON.stringify(previousGpa));
+  }, [previousGpa]);
 
   const calculateGpa = useCallback((courses) => {
     let totalPoints = 0;
@@ -24,6 +41,8 @@ function App() {
     }
 
     for (const course of courses) {
+      if (!course.included) continue;
+      
       const credits = parseFloat(course.credits) || 0;
       const target = parseFloat(course.target);
       
@@ -74,7 +93,13 @@ function App() {
   };
 
   const handleAddCourse = () => {
-    setCourses([...courses, { name: '', credits: '3', target: '', categories: {} }]);
+    setCourses([...courses, { 
+      name: '', 
+      credits: '3', 
+      target: '', 
+      categories: {},
+      included: true 
+    }]);
   };
 
   const handleRemoveCourse = (index) => {
@@ -89,6 +114,21 @@ function App() {
     });
   };
 
+  const handleClearData = () => {
+    if (window.confirm('Are you sure you want to clear all saved data?')) {
+      localStorage.removeItem('courses');
+      localStorage.removeItem('previousGpa');
+      setCourses([{
+        name: '',
+        credits: '3',
+        target: '',
+        categories: {},
+        included: true
+      }]);
+      setPreviousGpa({ gpa: '', credits: '' });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="container mx-auto max-w-3xl">
@@ -100,32 +140,6 @@ function App() {
               </h1>
 
               <div className="space-y-4">
-                <div className="bg-gray-50 p-4 rounded-lg space-y-4">
-                  <h2 className="font-semibold text-gray-700">Previous GPA (Optional)</h2>
-                  <div className="flex flex-col md:flex-row gap-4">
-                    <input
-                      className="px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      type="number"
-                      placeholder="Previous GPA"
-                      name="gpa"
-                      value={previousGpa.gpa}
-                      onChange={handlePreviousGpaChange}
-                      min="0"
-                      max="4.333"
-                      step="0.001"
-                    />
-                    <input
-                      className="px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      type="number"
-                      placeholder="Total Credits Completed"
-                      name="credits"
-                      value={previousGpa.credits}
-                      onChange={handlePreviousGpaChange}
-                      min="0"
-                    />
-                  </div>
-                </div>
-
                 {courses.map((course, index) => (
                   <Course
                     key={index}
@@ -157,6 +171,47 @@ function App() {
                     </p>
                   </div>
                 )}
+
+                <div className="mt-8 border-t pt-6">
+                  <details className="group">
+                    <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800">
+                      <span className="font-medium">Include Previous GPA</span>
+                      <span className="ml-2 text-gray-400">(optional)</span>
+                    </summary>
+                    <div className="mt-4 space-y-4">
+                      <div className="flex flex-col md:flex-row gap-4">
+                        <input
+                          className="px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          type="number"
+                          placeholder="Previous GPA"
+                          name="gpa"
+                          value={previousGpa.gpa}
+                          onChange={handlePreviousGpaChange}
+                          min="0"
+                          max="4.333"
+                          step="0.001"
+                        />
+                        <input
+                          className="px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          type="number"
+                          placeholder="Total Credits Completed"
+                          name="credits"
+                          value={previousGpa.credits}
+                          onChange={handlePreviousGpaChange}
+                          min="0"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleClearData}
+                        className="text-sm text-red-500 hover:text-red-600"
+                      >
+                        Clear All Saved Data
+                      </button>
+                    </div>
+                  </details>
+                </div>
               </div>
             </div>
           </div>

@@ -1,9 +1,27 @@
 import React, { useState } from 'react';
 import { Plus, Trash } from "lucide-react";
 
+const getLetterGrade = (percentage) => {
+  if (!percentage) return '';
+  if (percentage >= 97) return 'A+';
+  if (percentage >= 93) return 'A';
+  if (percentage >= 90) return 'A-';
+  if (percentage >= 87) return 'B+';
+  if (percentage >= 83) return 'B';
+  if (percentage >= 80) return 'B-';
+  if (percentage >= 77) return 'C+';
+  if (percentage >= 73) return 'C';
+  if (percentage >= 70) return 'C-';
+  if (percentage >= 67) return 'D+';
+  if (percentage >= 63) return 'D';
+  if (percentage >= 60) return 'D-';
+  return 'F';
+};
+
 function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryWeight, setNewCategoryWeight] = useState('');
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleAddCategory = () => {
     if (!newCategoryName.trim()) return;
@@ -74,26 +92,72 @@ function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
   };
 
   return (
-    <div className="space-y-4 p-4 border rounded-lg">
+    <div className={`space-y-4 p-4 border rounded-lg ${!course.included ? 'opacity-50' : ''}`}>
       <div className="flex justify-between items-start">
-        <div className="flex flex-col md:flex-row gap-4">
-          <input
-            className="px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Course Name"
-            name="name"
-            value={course.name}
-            onChange={(e) => handleCourseChange(index, e)}
-          />
-          <input
-            className="px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Target Grade"
-            name="target"
-            type="number"
-            min="0"
-            max="100"
-            value={course.target}
-            onChange={(e) => handleCourseChange(index, e)}
-          />
+        <div className="flex flex-col md:flex-row gap-4 w-full">
+          <button
+            type="button"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="flex items-center gap-2 text-gray-500 hover:text-gray-700"
+            tabIndex="-1"
+          >
+            <svg
+              className={`h-5 w-5 transform transition-transform ${isCollapsed ? '' : 'rotate-90'}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </button>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={course.included}
+              onChange={(e) => handleCourseChange(index, {
+                target: {
+                  name: 'included',
+                  value: e.target.checked
+                }
+              })}
+              className="h-4 w-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+            />
+            <input
+              className="px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Course Name"
+              name="name"
+              value={course.name}
+              onChange={(e) => handleCourseChange(index, e)}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              className="px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Target Grade"
+              name="target"
+              type="number"
+              min="0"
+              max="100"
+              value={course.target}
+              onChange={(e) => handleCourseChange(index, e)}
+            />
+            {course.target && (
+              <span className={`text-sm font-medium ${
+                getLetterGrade(parseFloat(course.target)).startsWith('A') ? 'text-green-600' :
+                getLetterGrade(parseFloat(course.target)).startsWith('B') ? 'text-blue-600' :
+                getLetterGrade(parseFloat(course.target)).startsWith('C') ? 'text-yellow-600' :
+                getLetterGrade(parseFloat(course.target)).startsWith('D') ? 'text-orange-600' :
+                'text-red-600'
+              }`}>
+                {getLetterGrade(parseFloat(course.target))}
+              </span>
+            )}
+          </div>
           <input
             className="px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             type="number"
@@ -105,6 +169,17 @@ function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
             max="6"
             required
           />
+          {isCollapsed && Object.keys(course.categories).length > 0 && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <span>Current:</span>
+              <span className="font-medium">
+                {calculateCurrentGrade()?.toFixed(1) || '-'}%
+              </span>
+              {calculateNeededScore() !== null && calculateNeededScore() > 100 && (
+                <span className="text-red-500">⚠️</span>
+              )}
+            </div>
+          )}
         </div>
         <button
           type="button"
@@ -120,8 +195,7 @@ function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
         </button>
       </div>
 
-      {/* Categories Section */}
-      <div className="space-y-2">
+      <div className={`space-y-2 transition-all duration-200 ${isCollapsed ? 'hidden' : ''}`}>
         {/* Existing Categories */}
         {Object.entries(course.categories).map(([catName, category]) => (
           <div key={catName} className="flex items-center justify-between gap-4 p-2 bg-gray-50 rounded-lg">
@@ -214,7 +288,11 @@ function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  handleAddCategory();
+                  if (newCategoryName.trim()) {
+                    handleAddCategory();
+                    // Focus on the category name input of the next new category
+                    e.target.focus();
+                  }
                 }
               }}
             />
@@ -245,7 +323,12 @@ function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  handleAddCategory();
+                  if (newCategoryName.trim()) {
+                    handleAddCategory();
+                    // Focus back on the category name input
+                    const categoryNameInput = e.target.closest('.rounded-lg').querySelector('input[type="text"]');
+                    categoryNameInput?.focus();
+                  }
                 }
               }}
               min="0"
@@ -254,7 +337,14 @@ function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
             <span className="text-sm text-gray-400">%</span>
             <button
               type="button"
-              onClick={handleAddCategory}
+              onClick={() => {
+                if (newCategoryName.trim()) {
+                  handleAddCategory();
+                  // Focus back on the category name input
+                  const categoryNameInput = document.querySelector('.border-dashed input[type="text"]');
+                  categoryNameInput?.focus();
+                }
+              }}
               className="p-1 text-green-500 hover:text-green-600"
             >
               <Plus className="h-4 w-4" />
@@ -305,11 +395,25 @@ function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
             {calculateNeededScore() !== null && (
               <div className="p-2 bg-gray-50 rounded-lg">
                 <p className="text-sm text-gray-600">
-                  To achieve {course.target}% in this course, you need to score at least{' '}
-                  <span className="font-medium text-blue-600">
-                    {calculateNeededScore().toFixed(1)}%
-                  </span>
-                  {' '}on remaining work.
+                  To achieve {course.target}% in this course, you need to score{' '}
+                  {calculateNeededScore() > 100 ? (
+                    <span className="font-medium text-red-600">
+                      over 100% ({calculateNeededScore().toFixed(1)}%)
+                    </span>
+                  ) : (
+                    <>
+                      at least{' '}
+                      <span className="font-medium text-blue-600">
+                        {calculateNeededScore().toFixed(1)}%
+                      </span>
+                    </>
+                  )}{' '}
+                  on remaining work.
+                  {calculateNeededScore() > 100 && (
+                    <span className="block mt-1 text-red-600 text-xs">
+                      ⚠️ This target grade is not possible with current scores
+                    </span>
+                  )}
                 </p>
               </div>
             )}
