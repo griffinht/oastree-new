@@ -22,6 +22,10 @@ function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryWeight, setNewCategoryWeight] = useState('');
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [newAssignmentName, setNewAssignmentName] = useState('');
+  const [newAssignmentEarned, setNewAssignmentEarned] = useState('');
+  const [newAssignmentTotal, setNewAssignmentTotal] = useState('100');
+  const [collapsedCategories, setCollapsedCategories] = useState({});
 
   const handleAddCategory = () => {
     if (!newCategoryName.trim()) return;
@@ -138,6 +142,13 @@ function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
     return isFinite(neededPercentage) ? neededPercentage : null;
   };
 
+  const toggleCategoryCollapse = (catName) => {
+    setCollapsedCategories(prev => ({
+      ...prev,
+      [catName]: !prev[catName]
+    }));
+  };
+
   return (
     <div className={`space-y-4 p-4 border rounded-lg ${!course.included ? 'opacity-50' : ''}`}>
       <div className="flex justify-between items-start">
@@ -248,6 +259,26 @@ function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
           <div key={catName} className="space-y-2">
             <div className="flex items-center justify-between gap-4 p-2 bg-gray-50 rounded-lg">
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => toggleCategoryCollapse(catName)}
+                  className="text-gray-500 hover:text-gray-700"
+                  tabIndex="-1"
+                >
+                  <svg
+                    className={`h-4 w-4 transform transition-transform ${collapsedCategories[catName] ? '' : 'rotate-90'}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </button>
                 <input
                   className="w-[100px] px-2 py-1 rounded-md border border-gray-300 text-sm font-medium focus:outline-none"
                   value={catName}
@@ -324,7 +355,7 @@ function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
             </div>
 
             {/* Assignments section */}
-            <div className="ml-8 space-y-2">
+            <div className={`ml-8 space-y-2 ${collapsedCategories[catName] ? 'hidden' : ''}`}>
               {category.assignments?.map((assignment, assignmentIndex) => (
                 <div key={assignmentIndex} className="flex items-center gap-4 p-2 bg-gray-100/50 rounded-lg">
                   <input
@@ -379,15 +410,78 @@ function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
                 </div>
               ))}
               
-              {/* Add assignment button */}
-              <button
-                type="button"
-                onClick={() => handleAddAssignment(catName)}
-                className="text-sm text-blue-500 hover:text-blue-600 flex items-center gap-1"
-              >
-                <Plus className="h-3 w-3" />
-                Add Assignment
-              </button>
+              {/* New Assignment Row - now editable */}
+              <div className="flex items-center gap-4 p-2 bg-gray-100/50 rounded-lg border-2 border-dashed border-gray-300 hover:bg-gray-100">
+                <input
+                  className="w-[100px] px-2 py-1 rounded-md border border-gray-300 text-sm"
+                  placeholder={`${catName} ${(category.assignments?.length || 0) + 1}`}
+                  value={newAssignmentName}
+                  onChange={(e) => setNewAssignmentName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newAssignmentName.trim()) {
+                      e.preventDefault();
+                      handleAddAssignment(catName);
+                    }
+                  }}
+                />
+                <div className="flex items-center gap-2">
+                  <input
+                    className="w-16 px-2 py-1 rounded-md border border-gray-300 text-sm"
+                    type="number"
+                    placeholder="95"
+                    value={newAssignmentEarned}
+                    onChange={(e) => setNewAssignmentEarned(e.target.value)}
+                    min="0"
+                    max={newAssignmentTotal}
+                  />
+                  <span className="text-gray-400">/</span>
+                  <input
+                    className="w-16 px-2 py-1 rounded-md border border-gray-300 text-sm"
+                    type="number"
+                    placeholder="100"
+                    value={newAssignmentTotal}
+                    onChange={(e) => setNewAssignmentTotal(e.target.value)}
+                    min="0"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (newAssignmentName.trim()) {
+                      const newCategories = { ...course.categories };
+                      const category = newCategories[catName];
+                      
+                      category.assignments = [...(category.assignments || []), {
+                        name: newAssignmentName,
+                        earned: newAssignmentEarned || '',
+                        total: newAssignmentTotal || '100'
+                      }];
+
+                      // Update the category's earned/total
+                      const totalEarned = category.assignments.reduce((sum, a) => sum + (parseFloat(a.earned) || 0), 0);
+                      const totalPossible = category.assignments.reduce((sum, a) => sum + (parseFloat(a.total) || 0), 0);
+                      category.earned = totalEarned;
+                      category.total = totalPossible;
+
+                      handleCourseChange(index, {
+                        target: {
+                          name: 'categories',
+                          value: newCategories
+                        }
+                      });
+
+                      // Clear the inputs
+                      setNewAssignmentName('');
+                      setNewAssignmentEarned('');
+                      setNewAssignmentTotal('100');
+                    }
+                  }}
+                  className="text-green-500 hover:text-green-600"
+                  tabIndex="-1"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
         ))}
