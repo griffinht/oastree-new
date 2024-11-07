@@ -1,220 +1,167 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Plus } from "lucide-react";
-import Course from './components/Course';
+import React, { useState, useEffect } from 'react';
 
 function App() {
-  const [courses, setCourses] = useState(() => {
-    const saved = localStorage.getItem('courses');
-    return saved ? JSON.parse(saved) : [{
-      name: '',
-      credits: '3',
-      target: '',
-      categories: {},
-      included: true
-    }];
-  });
+  const [annual, setAnnual] = useState('');
+  const [monthly, setMonthly] = useState('');
+  const [monthlyExpenses, setMonthlyExpenses] = useState('');
+  const [targetAmount, setTargetAmount] = useState('1000000'); // Default $1M
+  const [yearsToProject, setYearsToProject] = useState('10'); // Default 10 years
+  const [projections, setProjections] = useState(null);
 
-  const [previousGpa, setPreviousGpa] = useState(() => {
-    const saved = localStorage.getItem('previousGpa');
-    return saved ? JSON.parse(saved) : { gpa: '', credits: '' };
-  });
+  const ANNUAL_RETURN = 0.07; // 7% annual return
 
-  const [gpa, setGpa] = useState(null);
+  const updateAnnual = (value) => {
+    const numValue = parseFloat(value.replace(/[^0-9.]/g, '')) || 0;
+    setAnnual(numValue);
+    setMonthly((numValue / 12).toFixed(2));
+  };
+
+  const updateMonthly = (value) => {
+    const numValue = parseFloat(value.replace(/[^0-9.]/g, '')) || 0;
+    setMonthly(numValue);
+    setAnnual((numValue * 12).toFixed(2));
+  };
 
   useEffect(() => {
-    localStorage.setItem('courses', JSON.stringify(courses));
-  }, [courses]);
+    if (annual && monthlyExpenses) {
+      const yearlySavings = annual - (monthlyExpenses * 12);
+      
+      // Calculate future value after specified years
+      const futureValue = calculateFutureValue(yearlySavings, ANNUAL_RETURN, yearsToProject);
+      
+      // Calculate years needed to reach target
+      const yearsToTarget = calculateYearsToTarget(yearlySavings, ANNUAL_RETURN, targetAmount);
 
-  useEffect(() => {
-    localStorage.setItem('previousGpa', JSON.stringify(previousGpa));
-  }, [previousGpa]);
-
-  const calculateGpa = useCallback((courses) => {
-    let totalPoints = 0;
-    let totalCredits = 0;
-
-    if (previousGpa.gpa && previousGpa.credits) {
-      const prevGpa = parseFloat(previousGpa.gpa);
-      const prevCredits = parseFloat(previousGpa.credits);
-      totalPoints += prevGpa * prevCredits;
-      totalCredits += prevCredits;
+      setProjections({
+        yearlySavings,
+        futureValue,
+        yearsToTarget,
+        targetDate: new Date(Date.now() + yearsToTarget * 365 * 24 * 60 * 60 * 1000)
+      });
     }
+  }, [annual, monthlyExpenses, targetAmount, yearsToProject]);
 
-    for (const course of courses) {
-      if (!course.included) continue;
-      
-      const credits = parseFloat(course.credits) || 0;
-      const target = parseFloat(course.target);
-      
-      if (!target || !credits) continue;
-      
-      let points = 0;
-      
-      if (target >= 97) points = 4.333;      // A+
-      else if (target >= 93) points = 4.0;   // A
-      else if (target >= 90) points = 3.667; // A-
-      else if (target >= 87) points = 3.333; // B+
-      else if (target >= 83) points = 3.0;   // B
-      else if (target >= 80) points = 2.667; // B-
-      else if (target >= 77) points = 2.333; // C+
-      else if (target >= 73) points = 2.0;   // C
-      else if (target >= 70) points = 1.667; // C-
-      else if (target >= 67) points = 1.333; // D+
-      else if (target >= 63) points = 1.0;   // D
-      else if (target >= 60) points = 0.667; // D-
-      else points = 0.0;                     // F
-
-      totalPoints += points * credits;
-      totalCredits += credits;
-    }
-
-    return totalCredits === 0 ? 0 : totalPoints / totalCredits;
-  }, [previousGpa]);
-
-  useEffect(() => {
-    const calculatedGpa = calculateGpa(courses);
-    setGpa(calculatedGpa);
-  }, [courses, calculateGpa]);
-
-  const handleCourseChange = (index, event, category = null) => {
-    const newCourses = [...courses];
-    if (category) {
-      if (event.target.name === 'weight') {
-        newCourses[index].categories[category].weight = parseFloat(event.target.value) || 0;
-      } else {
-        newCourses[index].categories[category][event.target.name] = event.target.value;
-      }
-    } else if (event.target.name === 'categories') {
-      newCourses[index].categories = event.target.value;
-    } else {
-      newCourses[index][event.target.name] = event.target.value;
-    }
-    setCourses(newCourses);
+  // Calculate future value with compound interest
+  const calculateFutureValue = (yearlySavings, rate, years) => {
+    return yearlySavings * ((Math.pow(1 + rate, years) - 1) / rate);
   };
 
-  const handleAddCourse = () => {
-    setCourses([...courses, { 
-      name: '', 
-      credits: '3', 
-      target: '', 
-      categories: {},
-      included: true 
-    }]);
-  };
-
-  const handleRemoveCourse = (index) => {
-    const newCourses = courses.filter((_, i) => i !== index);
-    setCourses(newCourses);
-  };
-
-  const handlePreviousGpaChange = (event) => {
-    setPreviousGpa({
-      ...previousGpa,
-      [event.target.name]: event.target.value
-    });
-  };
-
-  const handleClearData = () => {
-    if (window.confirm('Are you sure you want to clear all saved data?')) {
-      localStorage.removeItem('courses');
-      localStorage.removeItem('previousGpa');
-      setCourses([{
-        name: '',
-        credits: '3',
-        target: '',
-        categories: {},
-        included: true
-      }]);
-      setPreviousGpa({ gpa: '', credits: '' });
-    }
+  // Calculate years needed to reach target
+  const calculateYearsToTarget = (yearlySavings, rate, target) => {
+    return Math.log(1 + (target * rate) / yearlySavings) / Math.log(1 + rate);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="container mx-auto max-w-3xl">
-        <div className="bg-white rounded-lg shadow-md">
-          <div className="p-6">
-            <div className="space-y-8">
-              <h1 className="text-3xl font-bold text-center bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                GPA Calculator
-              </h1>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+        <h1 className="text-2xl font-bold text-center mb-6">
+          Quick FI Calculator
+        </h1>
+        
+        <div className="space-y-4">
+          {/* Income and Expenses Section */}
+          <div className="space-y-4 mb-6">
+            <div className="relative">
+              <label className="block text-gray-700 mb-2">Annual Income</label>
+              <span className="absolute left-3 top-[calc(50%+0.5rem)] transform -translate-y-1/2 text-gray-500">$</span>
+              <input
+                type="number"
+                value={annual}
+                onChange={(e) => updateAnnual(e.target.value)}
+                className="w-full pl-8 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter annual income"
+                min="0"
+              />
+            </div>
 
-              <div className="space-y-4">
-                {courses.map((course, index) => (
-                  <Course
-                    key={index}
-                    course={course}
-                    index={index}
-                    handleCourseChange={handleCourseChange}
-                    handleRemoveCourse={handleRemoveCourse}
-                  />
-                ))}
+            <div className="relative">
+              <label className="block text-gray-700 mb-2">Monthly Income</label>
+              <span className="absolute left-3 top-[calc(50%+0.5rem)] transform -translate-y-1/2 text-gray-500">$</span>
+              <input
+                type="number"
+                value={monthly}
+                onChange={(e) => updateMonthly(e.target.value)}
+                className="w-full pl-8 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter monthly income"
+                min="0"
+              />
+            </div>
 
-                <div className="flex justify-center">
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50"
-                    onClick={handleAddCourse}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Course
-                  </button>
-                </div>
-
-                {gpa !== null && (
-                  <div className="w-full bg-gray-50 p-6 rounded-xl text-center">
-                    <p className="text-sm text-gray-600 mb-1">
-                      Your Cumulative GPA
-                    </p>
-                    <p className="text-4xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
-                      {gpa.toFixed(3)}
-                    </p>
-                  </div>
-                )}
-
-                <div className="mt-8 border-t pt-6">
-                  <details className="group">
-                    <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800">
-                      <span className="font-medium">Include Previous GPA</span>
-                      <span className="ml-2 text-gray-400">(optional)</span>
-                    </summary>
-                    <div className="mt-4 space-y-4">
-                      <div className="flex flex-col md:flex-row gap-4">
-                        <input
-                          className="px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          type="number"
-                          placeholder="Previous GPA"
-                          name="gpa"
-                          value={previousGpa.gpa}
-                          onChange={handlePreviousGpaChange}
-                          min="0"
-                          max="4.333"
-                          step="0.001"
-                        />
-                        <input
-                          className="px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          type="number"
-                          placeholder="Total Credits Completed"
-                          name="credits"
-                          value={previousGpa.credits}
-                          onChange={handlePreviousGpaChange}
-                          min="0"
-                        />
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={handleClearData}
-                        className="text-sm text-red-500 hover:text-red-600"
-                      >
-                        Clear All Saved Data
-                      </button>
-                    </div>
-                  </details>
-                </div>
-              </div>
+            <div className="relative">
+              <label className="block text-gray-700 mb-2">Monthly Expenses</label>
+              <span className="absolute left-3 top-[calc(50%+0.5rem)] transform -translate-y-1/2 text-gray-500">$</span>
+              <input
+                type="number"
+                value={monthlyExpenses}
+                onChange={(e) => setMonthlyExpenses(parseFloat(e.target.value) || 0)}
+                className="w-full pl-8 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter monthly expenses"
+                min="0"
+              />
             </div>
           </div>
+
+          {projections && (
+            <div className="space-y-4">
+              <p className="text-gray-700 font-semibold">Based on {ANNUAL_RETURN * 100}% annual return:</p>
+              <p className="text-gray-700">Yearly Savings: ${projections.yearlySavings.toLocaleString()}</p>
+              
+              <div className="flex items-center space-x-4">
+                <div className="flex-1">
+                  <label className="block text-gray-700 mb-2">Years to Project</label>
+                  <input
+                    type="number"
+                    value={yearsToProject}
+                    onChange={(e) => setYearsToProject(parseFloat(e.target.value) || 0)}
+                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Years"
+                    min="0"
+                  />
+                </div>
+                <div className="flex-1 pt-8">
+                  <p className="text-gray-700 font-semibold">
+                    ${projections.futureValue.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-4">
+                <div className="flex-1">
+                  <label className="block text-gray-700 mb-2">Target Amount</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                    <input
+                      type="number"
+                      value={targetAmount}
+                      onChange={(e) => setTargetAmount(parseFloat(e.target.value) || 0)}
+                      className="w-full pl-8 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Target $"
+                      min="0"
+                    />
+                  </div>
+                </div>
+                <div className="flex-1 pt-8">
+                  <p className="text-gray-700 font-semibold">
+                    {projections.yearsToTarget.toFixed(1)} years
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-4 border-t">
+                <p className="text-sm text-gray-600">
+                  Need help figuring out your target amount? Visit{' '}
+                  <a 
+                    href="https://ficalc.app" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-500 hover:text-blue-600"
+                  >
+                    FI Calculator
+                  </a>
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
