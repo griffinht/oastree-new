@@ -45,37 +45,79 @@ function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
     return totalPossibleWeight === 0 ? null : (totalEarned / totalPossibleWeight * 100);
   };
 
+  const calculateNeededScore = () => {
+    const target = parseFloat(course.target);
+    if (!target) return null;
+
+    const categories = course.categories;
+    let earnedPoints = 0;
+    let remainingWeight = 0;
+
+    // Calculate points already earned
+    Object.values(categories).forEach(cat => {
+      const earned = parseFloat(cat.earned);
+      const total = parseFloat(cat.total);
+      const weight = parseFloat(cat.weight) || 0;
+      
+      if (!isNaN(earned) && !isNaN(total) && total > 0) {
+        earnedPoints += (earned / total) * weight;
+      } else {
+        remainingWeight += weight;
+      }
+    });
+
+    // Calculate needed percentage in remaining categories
+    const neededPoints = target - earnedPoints;
+    const neededPercentage = (neededPoints / remainingWeight) * 100;
+
+    return isFinite(neededPercentage) ? neededPercentage : null;
+  };
+
   return (
     <div className="space-y-4 p-4 border rounded-lg">
-      <div className="flex flex-col md:flex-row gap-4">
-        <input
-          className="px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="Course Name"
-          name="name"
-          value={course.name}
-          onChange={(e) => handleCourseChange(index, e)}
-        />
-        <input
-          className="px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="Target Grade"
-          name="target"
-          type="number"
-          min="0"
-          max="100"
-          value={course.target}
-          onChange={(e) => handleCourseChange(index, e)}
-        />
-        <input
-          className="px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          type="number"
-          placeholder="Credits"
-          name="credits"
-          value={course.credits}
-          onChange={(e) => handleCourseChange(index, e)}
-          min="0"
-          max="6"
-          required
-        />
+      <div className="flex justify-between items-start">
+        <div className="flex flex-col md:flex-row gap-4">
+          <input
+            className="px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Course Name"
+            name="name"
+            value={course.name}
+            onChange={(e) => handleCourseChange(index, e)}
+          />
+          <input
+            className="px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Target Grade"
+            name="target"
+            type="number"
+            min="0"
+            max="100"
+            value={course.target}
+            onChange={(e) => handleCourseChange(index, e)}
+          />
+          <input
+            className="px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            type="number"
+            placeholder="Credits"
+            name="credits"
+            value={course.credits}
+            onChange={(e) => handleCourseChange(index, e)}
+            min="0"
+            max="6"
+            required
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm('Are you sure you want to remove this course?')) {
+              handleRemoveCourse(index);
+            }
+          }}
+          className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-md"
+          tabIndex="-1"
+        >
+          <Trash className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Categories Section */}
@@ -222,42 +264,56 @@ function Course({ course, index, handleCourseChange, handleRemoveCourse }) {
 
         {/* Summary Rows */}
         {Object.keys(course.categories).length > 0 && (
-          <div className="flex items-center justify-between gap-4 p-2 bg-gray-50 rounded-lg">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-700 capitalize min-w-[100px]">
-                Total Grade
-              </span>
+          <>
+            <div className="flex items-center justify-between gap-4 p-2 bg-gray-50 rounded-lg">
               <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-700 capitalize min-w-[100px]">
+                  Total Grade
+                </span>
+                <div className="flex items-center gap-2">
+                  <input
+                    className="w-20 px-2 py-1 rounded-md border border-gray-300 bg-gray-100"
+                    type="number"
+                    value={calculateCurrentGrade()?.toFixed(1) || ''}
+                    disabled
+                  />
+                  <span className="text-gray-500">/</span>
+                  <input
+                    className="w-20 px-2 py-1 rounded-md border border-gray-300 bg-gray-100"
+                    type="number"
+                    value={course.target || 100}
+                    disabled
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Weight:</span>
                 <input
-                  className="w-20 px-2 py-1 rounded-md border border-gray-300 bg-gray-100"
+                  className={`w-16 px-2 py-1 rounded-md border ${
+                    Object.values(course.categories).reduce((sum, cat) => sum + (parseFloat(cat.weight) || 0), 0) !== 100
+                    ? 'border-amber-300 bg-amber-50'
+                    : 'border-gray-300 bg-gray-100'
+                  }`}
                   type="number"
-                  value={calculateCurrentGrade()?.toFixed(1) || ''}
+                  value={Object.values(course.categories).reduce((sum, cat) => sum + (parseFloat(cat.weight) || 0), 0)}
                   disabled
                 />
-                <span className="text-gray-500">/</span>
-                <input
-                  className="w-20 px-2 py-1 rounded-md border border-gray-300 bg-gray-100"
-                  type="number"
-                  value={course.target || 100}
-                  disabled
-                />
+                <span className="text-sm text-gray-500">%</span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Weight:</span>
-              <input
-                className={`w-16 px-2 py-1 rounded-md border ${
-                  Object.values(course.categories).reduce((sum, cat) => sum + (parseFloat(cat.weight) || 0), 0) !== 100
-                  ? 'border-amber-300 bg-amber-50'
-                  : 'border-gray-300 bg-gray-100'
-                }`}
-                type="number"
-                value={Object.values(course.categories).reduce((sum, cat) => sum + (parseFloat(cat.weight) || 0), 0)}
-                disabled
-              />
-              <span className="text-sm text-gray-500">%</span>
-            </div>
-          </div>
+            
+            {calculateNeededScore() !== null && (
+              <div className="p-2 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600">
+                  To achieve {course.target}% in this course, you need to score at least{' '}
+                  <span className="font-medium text-blue-600">
+                    {calculateNeededScore().toFixed(1)}%
+                  </span>
+                  {' '}on remaining work.
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

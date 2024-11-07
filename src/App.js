@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus } from "lucide-react";
 import Course from './components/Course';
 
@@ -12,38 +12,7 @@ function App() {
   const [gpa, setGpa] = useState(null);
   const [previousGpa, setPreviousGpa] = useState({ gpa: '', credits: '' });
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const calculatedGpa = calculateGpa(courses);
-    setGpa(calculatedGpa);
-  };
-
-  const handleCourseChange = (index, event, category = null) => {
-    const newCourses = [...courses];
-    if (category) {
-      if (event.target.name === 'weight') {
-        newCourses[index].categories[category].weight = parseFloat(event.target.value) || 0;
-      } else {
-        newCourses[index].categories[category][event.target.name] = event.target.value;
-      }
-    } else if (event.target.name === 'categories') {
-      newCourses[index].categories = event.target.value;
-    } else {
-      newCourses[index][event.target.name] = event.target.value;
-    }
-    setCourses(newCourses);
-  };
-
-  const handleAddCourse = () => {
-    setCourses([...courses, { name: '', credits: '3', target: '', categories: {} }]);
-  };
-
-  const handleRemoveCourse = (index) => {
-    const newCourses = courses.filter((_, i) => i !== index);
-    setCourses(newCourses);
-  };
-
-  const calculateGpa = (courses) => {
+  const calculateGpa = useCallback((courses) => {
     let totalPoints = 0;
     let totalCredits = 0;
 
@@ -81,6 +50,36 @@ function App() {
     }
 
     return totalCredits === 0 ? 0 : totalPoints / totalCredits;
+  }, [previousGpa]);
+
+  useEffect(() => {
+    const calculatedGpa = calculateGpa(courses);
+    setGpa(calculatedGpa);
+  }, [courses, calculateGpa]);
+
+  const handleCourseChange = (index, event, category = null) => {
+    const newCourses = [...courses];
+    if (category) {
+      if (event.target.name === 'weight') {
+        newCourses[index].categories[category].weight = parseFloat(event.target.value) || 0;
+      } else {
+        newCourses[index].categories[category][event.target.name] = event.target.value;
+      }
+    } else if (event.target.name === 'categories') {
+      newCourses[index].categories = event.target.value;
+    } else {
+      newCourses[index][event.target.name] = event.target.value;
+    }
+    setCourses(newCourses);
+  };
+
+  const handleAddCourse = () => {
+    setCourses([...courses, { name: '', credits: '3', target: '', categories: {} }]);
+  };
+
+  const handleRemoveCourse = (index) => {
+    const newCourses = courses.filter((_, i) => i !== index);
+    setCourses(newCourses);
   };
 
   const handlePreviousGpaChange = (event) => {
@@ -100,7 +99,7 @@ function App() {
                 GPA Calculator
               </h1>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-4">
                 <div className="bg-gray-50 p-4 rounded-lg space-y-4">
                   <h2 className="font-semibold text-gray-700">Previous GPA (Optional)</h2>
                   <div className="flex flex-col md:flex-row gap-4">
@@ -137,7 +136,7 @@ function App() {
                   />
                 ))}
 
-                <div className="flex flex-col md:flex-row gap-4 justify-center">
+                <div className="flex justify-center">
                   <button
                     type="button"
                     className="flex items-center gap-2 px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50"
@@ -146,25 +145,19 @@ function App() {
                     <Plus className="h-4 w-4" />
                     Add Course
                   </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 rounded-md bg-blue-500 hover:bg-blue-600 text-white"
-                  >
-                    Calculate GPA
-                  </button>
                 </div>
-              </form>
 
-              {gpa !== null && (
-                <div className="w-full bg-gray-50 p-6 rounded-xl text-center">
-                  <p className="text-sm text-gray-600 mb-1">
-                    Your Cumulative GPA
-                  </p>
-                  <p className="text-4xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
-                    {gpa.toFixed(3)}
-                  </p>
-                </div>
-              )}
+                {gpa !== null && (
+                  <div className="w-full bg-gray-50 p-6 rounded-xl text-center">
+                    <p className="text-sm text-gray-600 mb-1">
+                      Your Cumulative GPA
+                    </p>
+                    <p className="text-4xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
+                      {gpa.toFixed(3)}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
