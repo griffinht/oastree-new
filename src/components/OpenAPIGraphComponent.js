@@ -1,15 +1,21 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import ReactFlow, {
   Controls,
   MiniMap,
   Background,
   useNodesState,
   useEdgesState,
-  addEdge,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-// If your OpenAPI spec is in YAML format, uncomment the next line
-// import yaml from 'js-yaml';
+import dagre from 'dagre';
+
+// Initialize dagre graph
+const dagreGraph = new dagre.graphlib.Graph();
+dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+// Define node dimensions
+const nodeWidth = 150;
+const nodeHeight = 50;
 
 const methodColors = {
   GET: '#4CAF50',
@@ -28,8 +34,9 @@ const OpenAPIGraphComponent = ({ spec }) => {
   useEffect(() => {
     if (spec) {
       const { nodes: parsedNodes, edges: parsedEdges } = parseOpenApiSpec(spec);
-      setNodes(parsedNodes);
-      setEdges(parsedEdges);
+      const layoutedElements = getLayoutedElements(parsedNodes, parsedEdges);
+      setNodes(layoutedElements.nodes);
+      setEdges(layoutedElements.edges);
       setLoading(false);
     }
   }, [spec]);
@@ -41,29 +48,18 @@ const OpenAPIGraphComponent = ({ spec }) => {
 
     const paths = spec.paths || {};
 
-    let nodeIdCounter = 0;
-
-    const getNodeId = (path) => {
-      if (!nodeIds.has(path)) {
-        nodeIds.add(path);
-        nodeIdCounter += 1;
-      }
-      return path;
-    };
-
     for (const path in paths) {
       const methods = paths[path];
       const pathSegments = path.split('/').filter((segment) => segment !== '');
 
       let parentPath = '';
-      pathSegments.forEach((segment, index) => {
+      pathSegments.forEach((segment) => {
         const isParameter = segment.startsWith('{') && segment.endsWith('}');
         const currentPath = parentPath + '/' + segment;
 
         if (!nodeIds.has(currentPath)) {
           nodes.push({
             id: currentPath,
-            position: { x: Math.random() * 600, y: Math.random() * 600 },
             data: {
               label: segment,
             },
@@ -73,7 +69,9 @@ const OpenAPIGraphComponent = ({ spec }) => {
               border: '1px solid #000',
               padding: 10,
               borderRadius: 5,
+              width: nodeWidth,
             },
+            position: { x: 0, y: 0 }, // Position will be set by dagre
           });
           nodeIds.add(currentPath);
 
@@ -97,7 +95,6 @@ const OpenAPIGraphComponent = ({ spec }) => {
         const methodId = `${fullPathNodeId}_${method.toUpperCase()}`;
         nodes.push({
           id: methodId,
-          position: { x: Math.random() * 600, y: Math.random() * 600 },
           data: {
             label: method.toUpperCase(),
           },
@@ -107,7 +104,9 @@ const OpenAPIGraphComponent = ({ spec }) => {
             border: '1px solid #000',
             padding: 10,
             borderRadius: 5,
+            width: nodeWidth,
           },
+          position: { x: 0, y: 0 }, // Position will be set by dagre
         });
 
         edges.push({
@@ -127,10 +126,34 @@ const OpenAPIGraphComponent = ({ spec }) => {
     return { nodes, edges };
   };
 
-  const onConnect = useCallback(
-    (params) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
-  );
+  const getLayoutedElements = (nodes, edges, direction = 'TB') => {
+    const isHorizontal = direction === 'LR';
+    dagreGraph.setGraph({ rankdir: direction });
+
+    nodes.forEach((node) => {
+      dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+    });
+
+    edges.forEach((edge) => {
+      dagreGraph.setEdge(edge.source, edge.target);
+    });
+
+    dagre.layout(dagreGraph);
+
+    nodes.forEach((node) => {
+      const nodeWithPosition = dagreGraph.node(node.id);
+      node.targetPosition = isHorizontal ? 'left' : 'top';
+      node.sourcePosition = isHorizontal ? 'right' : 'bottom';
+
+      // Shift dagre's coordinate system (origin at top-left) to React Flow's (origin at center)
+      node.position = {
+        x: nodeWithPosition.x - nodeWidth / 2,
+        y: nodeWithPosition.y - nodeHeight / 2,
+      };
+    });
+
+    return { nodes, edges };
+  };
 
   if (loading) {
     return <div>Loading OpenAPI specification...</div>;
@@ -141,10 +164,13 @@ const OpenAPIGraphComponent = ({ spec }) => {
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        elementsSelectable={false}
+        zoomOnScroll={true}
+        panOnScroll={true}
         fitView
+        fitViewOptions={{ padding: 0.2 }}
       >
         <Controls />
         <MiniMap />
