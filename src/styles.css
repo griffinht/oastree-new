@@ -1,0 +1,36 @@
+/* styles.css */
+.custom-node {
+    padding: 10px;
+    border: 1px solid #000;
+    border-radius: 5px;
+    background: #BBDEFB;
+    width: 180px;
+    box-sizing: border-box;
+    font-size: 12px;
+  }
+  
+  .custom-node button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0;
+  }
+  
+  .custom-node button:focus {
+    outline: none;
+  }
+  
+  .schema-properties {
+    margin-top: 5px;
+    font-size: 11px;
+  }
+  
+  .schema-properties div {
+    margin-bottom: 2px;
+  }
+  
+  .react-tooltip {
+    max-width: 300px;
+  }
+  
